@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WASD Rush</title>
+  <style>
+    :root {
+      --bg-1: #020305;
+      --bg-2: #080b12;
+      --bg-3: #101725;
+      --panel: rgba(10, 13, 19, 0.8);
+      --text: #f6f2ff;
+      --muted: rgba(246, 242, 255, 0.68);
+      --accent: #7ee0ff;
+      --accent-2: #93f5a7;
+      --danger: #ff6b8e;
+      --glow: #6bdcff;
+      --player-color: #7ee0ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: block;
+      padding: 24px;
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(126, 224, 255, 0.18), transparent 24%),
+        radial-gradient(circle at 15% 80%, rgba(147, 245, 167, 0.08), transparent 18%),
+        radial-gradient(circle at 85% 18%, rgba(132, 108, 255, 0.12), transparent 22%),
+        linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 54%, var(--bg-3) 100%);
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto;
+      pointer-events: none;
+      filter: blur(10px);
+      opacity: 0.5;
+    }
+
+    body::before {
+      width: 420px;
+      height: 420px;
+      top: -120px;
+      right: -60px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(126, 224, 255, 0.18), transparent 68%);
+    }
+
+    body::after {
+      width: 380px;
+      height: 380px;
+      bottom: -140px;
+      left: -80px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(147, 245, 167, 0.08), transparent 68%);
+    }
+
+    .shell {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: 28px;
+      border-radius: 30px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015)),
+        var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      animation: intro-rise 700ms ease-out;
+    }
+
+    @keyframes intro-rise {
+      from {
+        opacity: 0;
+        transform: translateY(22px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 16px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2.2rem, 5vw, 4.2rem);
+      line-height: 0.95;
+      letter-spacing: 0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .status {
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(126, 224, 255, 0.12), rgba(255, 255, 255, 0.04));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .toolbar,
+    .control-group,
+    .results-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar {
+      margin: 0 0 20px;
+    }
+
+    .control-group {
+      justify-content: flex-start;
+    }
+
+    .select-wrap {
+      display: grid;
+      gap: 6px;
+    }
+
+    .select-wrap label {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    select {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      padding: 12px 14px;
+      font: inherit;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+      outline: none;
+    }
+
+    select option {
+      color: #111111;
+      background: #ffffff;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .stat {
+      padding: 16px;
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(126, 224, 255, 0.08), rgba(255, 255, 255, 0.03));
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .stat span {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .stat strong {
+      font-size: clamp(1.6rem, 3vw, 2.3rem);
+    }
+
+    .arena {
+      position: relative;
+      padding: 24px;
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at top, rgba(126, 224, 255, 0.09), transparent 45%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
+        rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .progress-wrap {
+      margin: 0 0 18px;
+    }
+
+    .progress-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .progress-bar {
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 20px var(--glow);
+      transition: width 120ms linear;
+    }
+
+    .sequence {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .key {
+      min-height: 112px;
+      border-radius: 24px;
+      display: grid;
+      place-items: center;
+      font-size: clamp(2.3rem, 6vw, 4rem);
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      color: #eef8ff;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03) 30%),
+        linear-gradient(180deg, #172232, #0a1018);
+      border: 1px solid rgba(126, 224, 255, 0.15);
+      transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 -14px 24px rgba(0, 0, 0, 0.34),
+        0 14px 30px rgba(0, 0, 0, 0.24);
+      text-shadow: 0 0 12px rgba(107, 220, 255, 0.18);
+    }
+
+    .key.active {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08) 28%),
+        linear-gradient(180deg, #91e8ff, #3ab8e0);
+      color: #041821;
+      transform: translateY(-4px) scale(1.02);
+      border-color: rgba(126, 224, 255, 0.78);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        0 0 0 2px rgba(126, 224, 255, 0.18),
+        0 0 28px rgba(107, 220, 255, 0.28),
+        0 18px 36px rgba(58, 184, 224, 0.28);
+    }
+
+    .key.done {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.08) 28%),
+        linear-gradient(180deg, #9cf6b1, #39b972);
+      color: #092212;
+      border-color: rgba(176, 255, 187, 0.5);
+    }
+
+    .key.wrong {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06) 28%),
+        linear-gradient(180deg, #ff9ab7, #ff5d83);
+      color: #330915;
+      border-color: rgba(255, 191, 191, 0.5);
+    }
+
+    .center {
+      display: grid;
+      gap: 16px;
+      justify-items: center;
+      text-align: center;
+      margin: 20px 0 10px;
+    }
+
+    .prompt {
+      font-size: clamp(1.1rem, 2vw, 1.4rem);
+      color: var(--muted);
+    }
+
+    .feedback {
+      min-height: 1.5em;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 22px;
+      font: inherit;
+      font-weight: 800;
+      color: #03141b;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #c3f0ff);
+      box-shadow: 0 14px 30px rgba(107, 220, 255, 0.22);
+    }
+
+    .secondary {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04));
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: none;
+    }
+
+    .help {
+      margin-top: 18px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .player-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .player-name {
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .player-id {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      color: #071218;
+      background: var(--player-color);
+      box-shadow: 0 0 18px color-mix(in srgb, var(--player-color) 35%, transparent);
+    }
+
+    .avatar.small {
+      width: 28px;
+      height: 28px;
+      font-size: 0.8rem;
+      box-shadow: none;
+    }
+
+    .podium {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .podium-card {
+      min-height: 104px;
+      padding: 12px;
+      border-radius: 18px;
+      display: grid;
+      align-content: center;
+      gap: 6px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .podium-card.first {
+      background: linear-gradient(180deg, rgba(255, 226, 122, 0.18), rgba(255, 255, 255, 0.04));
+    }
+
+    .podium-card.second {
+      background: linear-gradient(180deg, rgba(194, 213, 223, 0.16), rgba(255, 255, 255, 0.04));
+    }
+
+    .podium-card.third {
+      background: linear-gradient(180deg, rgba(204, 136, 91, 0.18), rgba(255, 255, 255, 0.04));
+    }
+
+    .podium-name,
+    .leaderboard-name {
+      font-weight: 700;
+    }
+
+    .podium-score {
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .bottom {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      padding: 18px;
+      border-radius: 22px;
+      background:
+        linear-gradient(180deg, rgba(126, 224, 255, 0.06), rgba(255, 255, 255, 0.025));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .panel-title {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .sound-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sound-copy {
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .sound-toggle {
+      min-width: 130px;
+    }
+
+    .leaderboard {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .leaderboard li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .leaderboard-score {
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .leaderboard-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .leaderboard-meta {
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: right;
+    }
+
+    .empty-board {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(2, 8, 12, 0.7);
+      backdrop-filter: blur(14px);
+      z-index: 20;
+    }
+
+    .overlay.hidden {
+      display: none;
+    }
+
+    .dialog {
+      width: min(100%, 460px);
+      padding: 24px;
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(126, 224, 255, 0.08), rgba(255, 255, 255, 0.02)),
+        rgba(8, 17, 24, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+    }
+
+    .dialog h2 {
+      margin: 0 0 10px;
+      font-size: 1.8rem;
+    }
+
+    .dialog p {
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+
+    .name-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .color-picker {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .color-swatch {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14);
+    }
+
+    .color-swatch.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16);
+    }
+
+    .name-input {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      padding: 14px 16px;
+      font: inherit;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+      outline: none;
+    }
+
+    .name-input:focus {
+      border-color: rgba(255, 191, 105, 0.6);
+      box-shadow: 0 0 0 3px rgba(255, 191, 105, 0.14);
+    }
+
+    .dialog-error {
+      min-height: 1.2em;
+      color: #ffb3b3;
+      font-size: 0.92rem;
+    }
+
+    .mobile-controls {
+      display: none;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .mobile-key {
+      min-width: 72px;
+      min-height: 72px;
+      border-radius: 22px;
+      padding: 0;
+      font-size: 1.6rem;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 14px 0;
+    }
+
+    .result-tile {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .result-tile span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+
+    .particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 18px var(--glow);
+      animation: burst 700ms ease-out forwards;
+    }
+
+    @keyframes burst {
+      from {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+      }
+      to {
+        opacity: 0;
+        transform: translate(var(--x), var(--y)) scale(0.2);
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 14px;
+        overflow-y: auto;
+      }
+
+      .shell {
+        padding: 20px;
+      }
+
+      .stats,
+      .result-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sequence {
+        gap: 10px;
+      }
+
+      .key {
+        min-height: 84px;
+        border-radius: 18px;
+      }
+
+      .bottom {
+        grid-template-columns: 1fr;
+      }
+
+      .player-bar {
+        align-items: stretch;
+      }
+
+      .podium {
+        grid-template-columns: 1fr;
+      }
+
+      .mobile-controls {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <div>
+        <h1>WASD RUSH</h1>
+        <p class="subtitle" id="subtitle">Appuie sur W, puis A, puis S, puis D le plus vite possible pendant 20 secondes.</p>
+      </div>
+      <div class="status" id="status">Pret</div>
+    </div>
+
+    <section class="toolbar">
+      <div class="control-group">
+        <div class="select-wrap">
+          <label for="mode-select">Mode</label>
+          <select id="mode-select">
+            <option value="classic">Classic 20s</option>
+            <option value="ultra">Ultra 10s</option>
+            <option value="infinite">Infini</option>
+            <option value="training">Entrainement</option>
+          </select>
+        </div>
+        <div class="select-wrap">
+          <label for="theme-select">Theme</label>
+          <select id="theme-select">
+            <option value="neon">Neon</option>
+            <option value="ice">Glace</option>
+            <option value="fire">Feu</option>
+            <option value="matrix">Matrix</option>
+            <option value="gold">Or</option>
+          </select>
+        </div>
+      </div>
+      <div class="status" id="mode-chip">Classic</div>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <span>Score</span>
+        <strong id="score">0</strong>
+      </div>
+      <div class="stat">
+        <span>Temps restant</span>
+        <strong id="timer">20</strong>
+      </div>
+      <div class="stat">
+        <span>Meilleur score</span>
+        <strong id="best">0</strong>
+      </div>
+      <div class="stat">
+        <span>Combo</span>
+        <strong id="combo">x1</strong>
+      </div>
+      <div class="stat">
+        <span>Serie</span>
+        <strong id="streak">0</strong>
+      </div>
+    </section>
+
+    <section class="arena">
+      <div class="progress-wrap">
+        <div class="progress-head">
+          <span id="progress-label">Progression de la partie</span>
+          <span id="progress-value">100%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+
+      <div class="particles" id="particles"></div>
+      <div class="sequence" id="sequence">
+        <div class="key active" data-key="w">W</div>
+        <div class="key" data-key="a">A</div>
+        <div class="key" data-key="s">S</div>
+        <div class="key" data-key="d">D</div>
+      </div>
+
+      <div class="center">
+        <div class="prompt" id="prompt">Tape la sequence dans le bon ordre pour marquer des points.</div>
+        <div class="feedback" id="feedback">Appuie sur Commencer puis enchaine.</div>
+        <div class="subtitle" id="streak-line">Fais plusieurs sequences sans erreur pour monter ton combo.</div>
+      </div>
+
+      <div class="actions">
+        <button id="start" type="button">Commencer</button>
+        <button id="restart" type="button" class="secondary">Reinitialiser</button>
+      </div>
+
+      <div class="mobile-controls">
+        <button class="mobile-key" data-mobile-key="w" type="button">W</button>
+        <button class="mobile-key" data-mobile-key="a" type="button">A</button>
+        <button class="mobile-key" data-mobile-key="s" type="button">S</button>
+        <button class="mobile-key" data-mobile-key="d" type="button">D</button>
+      </div>
+    </section>
+
+    <section class="bottom">
+      <div class="panel">
+        <h2 class="panel-title">Ambiance</h2>
+        <div class="sound-row">
+          <p class="sound-copy">Sons d'action, musique de fond et themes.</p>
+          <div class="control-group">
+            <button id="sound-toggle" type="button" class="secondary sound-toggle">Son active</button>
+            <button id="music-toggle" type="button" class="secondary sound-toggle">Musique active</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Classement local</h2>
+        <div class="podium" id="podium"></div>
+        <ol class="leaderboard" id="leaderboard"></ol>
+        <p class="empty-board" id="empty-board">Aucun score enregistre pour le moment.</p>
+        <div class="actions">
+          <button id="clear-board" type="button" class="secondary">Vider le classement</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="player-bar">
+      <div class="player-id">
+        <div class="avatar" id="player-avatar">I</div>
+        <div>Joueur actuel: <span class="player-name" id="player-name">Invite</span></div>
+      </div>
+      <div class="control-group">
+        <button id="change-name" type="button" class="secondary">Changer de nom</button>
+        <button id="reset-best" type="button" class="secondary">Reset meilleur score</button>
+        <button id="share-score" type="button" class="secondary">Partager mon score</button>
+      </div>
+    </div>
+
+    <div class="help">Touches reconnues: W, A, S, D. Appuie sur R pour remettre le meilleur score a zero.</div>
+  </main>
+
+  <div class="overlay hidden" id="name-overlay">
+    <div class="dialog">
+      <h2>Choisis ton nom</h2>
+      <p>Ton pseudo sera affiche dans le classement local quand tu fais un bon score.</p>
+      <form class="name-form" id="name-form">
+        <input class="name-input" id="name-input" type="text" maxlength="16" placeholder="Exemple: Alex" autocomplete="off">
+        <div>
+          <p class="subtitle">Couleur du joueur</p>
+          <div class="color-picker" id="color-picker"></div>
+        </div>
+        <div class="dialog-error" id="name-error"></div>
+        <button type="submit">Valider</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="results-overlay">
+    <div class="dialog">
+      <h2>Fin de partie</h2>
+      <p id="results-text">Bravo.</p>
+      <div class="result-grid">
+        <div class="result-tile">
+          <span>Score final</span>
+          <strong id="result-score">0</strong>
+        </div>
+        <div class="result-tile">
+          <span>Position</span>
+          <strong id="result-rank">-</strong>
+        </div>
+        <div class="result-tile">
+          <span>Meilleure serie</span>
+          <strong id="result-streak">0</strong>
+        </div>
+      </div>
+      <p id="results-meta" class="subtitle">Mode classic</p>
+      <div class="results-actions">
+        <button id="close-results" type="button" class="secondary">Fermer</button>
+        <button id="replay-results" type="button">Rejouer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ORDER = ["w", "a", "s", "d"];
+    const BEST_KEY = "wasd-rush-best-score";
+    const LEADERBOARD_KEY = "wasd-rush-leaderboard";
+    const SOUND_KEY = "wasd-rush-sound";
+    const MUSIC_KEY = "wasd-rush-music";
+    const PLAYER_NAME_KEY = "wasd-rush-player-name";
+    const PLAYER_COLOR_KEY = "wasd-rush-player-color";
+    const THEME_KEY = "wasd-rush-theme";
+    const MODE_KEY = "wasd-rush-mode";
+    const LEADERBOARD_LIMIT = 10;
+    const PLAYER_COLORS = ["#7ee0ff", "#93f5a7", "#f6c65b", "#ff9657", "#ff6b8e", "#c89bff"];
+    const MODES = {
+      classic: { label: "Classic", duration: 20, infinite: false, subtitle: "Appuie sur W, puis A, puis S, puis D le plus vite possible pendant 20 secondes." },
+      ultra: { label: "Ultra", duration: 10, infinite: false, subtitle: "Mode Ultra: 10 secondes, pas le temps d'hesiter." },
+      infinite: { label: "Infini", duration: 0, infinite: true, subtitle: "Mode infini: pas de timer, juste toi contre ton rythme." },
+      training: { label: "Entrainement", duration: 30, infinite: false, subtitle: "Mode entrainement: 30 secondes, combo stable et erreurs plus douces." }
+    };
+    const THEMES = {
+      neon: { bg1: "#020305", bg2: "#080b12", bg3: "#101725", panel: "rgba(10, 13, 19, 0.82)", text: "#f6f2ff", muted: "rgba(246, 242, 255, 0.68)", accent: "#7ee0ff", accent2: "#93f5a7", danger: "#ff6b8e", glow: "rgba(107, 220, 255, 0.6)" },
+      ice: { bg1: "#020916", bg2: "#081727", bg3: "#123149", panel: "rgba(7, 20, 31, 0.82)", text: "#eefcff", muted: "rgba(238, 252, 255, 0.66)", accent: "#9be8ff", accent2: "#d0f7ff", danger: "#ff7e96", glow: "rgba(155, 232, 255, 0.6)" },
+      fire: { bg1: "#130303", bg2: "#2a0c07", bg3: "#45180b", panel: "rgba(20, 8, 7, 0.82)", text: "#fff2ea", muted: "rgba(255, 242, 234, 0.66)", accent: "#ff9657", accent2: "#ffd166", danger: "#ff5b5b", glow: "rgba(255, 150, 87, 0.6)" },
+      matrix: { bg1: "#010503", bg2: "#04110a", bg3: "#092117", panel: "rgba(4, 12, 8, 0.82)", text: "#eaffef", muted: "rgba(234, 255, 239, 0.66)", accent: "#62ff9b", accent2: "#b7ffc7", danger: "#ff6f91", glow: "rgba(98, 255, 155, 0.55)" },
+      gold: { bg1: "#0d0902", bg2: "#1d1708", bg3: "#30230e", panel: "rgba(20, 15, 7, 0.82)", text: "#fff8ea", muted: "rgba(255, 248, 234, 0.66)", accent: "#f6c65b", accent2: "#ffe49a", danger: "#ff7373", glow: "rgba(246, 198, 91, 0.55)" }
+    };
+
+    const scoreEl = document.getElementById("score");
+    const timerEl = document.getElementById("timer");
+    const bestEl = document.getElementById("best");
+    const comboEl = document.getElementById("combo");
+    const streakEl = document.getElementById("streak");
+    const statusEl = document.getElementById("status");
+    const subtitleEl = document.getElementById("subtitle");
+    const promptEl = document.getElementById("prompt");
+    const feedbackEl = document.getElementById("feedback");
+    const streakLineEl = document.getElementById("streak-line");
+    const startBtn = document.getElementById("start");
+    const restartBtn = document.getElementById("restart");
+    const modeChipEl = document.getElementById("mode-chip");
+    const modeSelectEl = document.getElementById("mode-select");
+    const themeSelectEl = document.getElementById("theme-select");
+    const progressLabelEl = document.getElementById("progress-label");
+    const progressValueEl = document.getElementById("progress-value");
+    const progressFillEl = document.getElementById("progress-fill");
+    const keyEls = [...document.querySelectorAll(".key")];
+    const mobileKeyEls = [...document.querySelectorAll("[data-mobile-key]")];
+    const leaderboardEl = document.getElementById("leaderboard");
+    const podiumEl = document.getElementById("podium");
+    const emptyBoardEl = document.getElementById("empty-board");
+    const soundToggleBtn = document.getElementById("sound-toggle");
+    const musicToggleBtn = document.getElementById("music-toggle");
+    const clearBoardBtn = document.getElementById("clear-board");
+    const playerNameEl = document.getElementById("player-name");
+    const playerAvatarEl = document.getElementById("player-avatar");
+    const changeNameBtn = document.getElementById("change-name");
+    const resetBestBtn = document.getElementById("reset-best");
+    const shareScoreBtn = document.getElementById("share-score");
+    const nameOverlayEl = document.getElementById("name-overlay");
+    const nameFormEl = document.getElementById("name-form");
+    const nameInputEl = document.getElementById("name-input");
+    const nameErrorEl = document.getElementById("name-error");
+    const colorPickerEl = document.getElementById("color-picker");
+    const particlesEl = document.getElementById("particles");
+    const resultsOverlayEl = document.getElementById("results-overlay");
+    const resultScoreEl = document.getElementById("result-score");
+    const resultRankEl = document.getElementById("result-rank");
+    const resultStreakEl = document.getElementById("result-streak");
+    const resultsTextEl = document.getElementById("results-text");
+    const resultsMetaEl = document.getElementById("results-meta");
+    const closeResultsBtn = document.getElementById("close-results");
+    const replayResultsBtn = document.getElementById("replay-results");
+
+    let score = 0;
+    let combo = 1;
+    let streak = 0;
+    let bestStreak = 0;
+    let bestScore = Number(localStorage.getItem(BEST_KEY) || 0);
+    let leaderboard = loadLeaderboard();
+    let playerName = localStorage.getItem(PLAYER_NAME_KEY) || "";
+    let playerColor = localStorage.getItem(PLAYER_COLOR_KEY) || PLAYER_COLORS[0];
+    let mode = localStorage.getItem(MODE_KEY) || "classic";
+    let theme = localStorage.getItem(THEME_KEY) || "neon";
+    let currentIndex = 0;
+    let timeLeft = MODES[mode].infinite ? "Infini" : MODES[mode].duration;
+    let isRunning = false;
+    let endTime = 0;
+    let timerId = null;
+    let wrongFlashTimeout = null;
+    let soundEnabled = localStorage.getItem(SOUND_KEY) !== "off";
+    let musicEnabled = localStorage.getItem(MUSIC_KEY) !== "off";
+    let audioContext = null;
+    let musicNodes = [];
+    let lastRank = null;
+
+    bestEl.textContent = bestScore;
+
+    function loadLeaderboard() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) || "[]");
+        return Array.isArray(saved) ? saved : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveLeaderboard() {
+      localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
+    }
+
+    function sanitizeName(value) {
+      return value.replace(/\s+/g, " ").trim().slice(0, 16);
+    }
+
+    function getPlayerInitial(name) {
+      return (name || "Invite").charAt(0).toUpperCase();
+    }
+
+    function renderColorPicker() {
+      colorPickerEl.innerHTML = "";
+      PLAYER_COLORS.forEach((color) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "color-swatch" + (color === playerColor ? " active" : "");
+        button.style.background = color;
+        button.addEventListener("click", () => {
+          playerColor = color;
+          localStorage.setItem(PLAYER_COLOR_KEY, playerColor);
+          renderColorPicker();
+          updatePlayerName();
+        });
+        colorPickerEl.appendChild(button);
+      });
+    }
+
+    function updatePlayerName() {
+      playerNameEl.textContent = playerName || "Invite";
+      playerAvatarEl.textContent = getPlayerInitial(playerName);
+      playerAvatarEl.style.background = playerColor;
+      document.documentElement.style.setProperty("--player-color", playerColor);
+    }
+
+    function showNameOverlay() {
+      nameOverlayEl.classList.remove("hidden");
+      nameInputEl.value = playerName;
+      nameErrorEl.textContent = "";
+      renderColorPicker();
+      setTimeout(() => nameInputEl.focus(), 0);
+    }
+
+    function hideNameOverlay() {
+      nameOverlayEl.classList.add("hidden");
+    }
+
+    function savePlayerName(name) {
+      playerName = name;
+      localStorage.setItem(PLAYER_NAME_KEY, playerName);
+      updatePlayerName();
+      hideNameOverlay();
+    }
+
+    function formatDate(isoString) {
+      try {
+        return new Date(isoString).toLocaleString("fr-FR", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      } catch {
+        return isoString;
+      }
+    }
+
+    function renderPodium() {
+      podiumEl.innerHTML = "";
+      const top = leaderboard.slice(0, 3);
+
+      top.forEach((entry, index) => {
+        const card = document.createElement("div");
+        card.className = "podium-card " + (index === 0 ? "first" : index === 1 ? "second" : "third");
+        card.innerHTML = `
+          <div>${index === 0 ? "1" : index === 1 ? "2" : "3"}</div>
+          <div class="leaderboard-entry">
+            <div class="avatar small" style="background:${entry.color || PLAYER_COLORS[0]}">${getPlayerInitial(entry.name)}</div>
+            <div class="podium-name">${entry.name || "Invite"}</div>
+          </div>
+          <div class="podium-score">${entry.score} pts</div>
+        `;
+        podiumEl.appendChild(card);
+      });
+    }
+
+    function renderLeaderboard() {
+      leaderboardEl.innerHTML = "";
+      emptyBoardEl.style.display = leaderboard.length ? "none" : "block";
+      renderPodium();
+
+      leaderboard.forEach((entry, index) => {
+        const item = document.createElement("li");
+        item.innerHTML = `
+          <span class="leaderboard-entry">
+            <div class="avatar small" style="background:${entry.color || PLAYER_COLORS[0]}">${getPlayerInitial(entry.name)}</div>
+            <span>
+            <span class="leaderboard-name">#${index + 1} ${entry.name || "Invite"}</span><br>
+            <span class="leaderboard-score">${entry.score} pts</span>
+            </span>
+          </span>
+          <span class="leaderboard-meta">${formatDate(entry.date)}<br>${entry.modeLabel || "Classic"}</span>
+        `;
+        leaderboardEl.appendChild(item);
+      });
+    }
+
+    function pushLeaderboardEntry(finalScore) {
+      leaderboard.push({
+        name: playerName || "Invite",
+        color: playerColor,
+        score: finalScore,
+        date: new Date().toISOString(),
+        mode: mode,
+        modeLabel: MODES[mode].label
+      });
+      leaderboard.sort((a, b) => b.score - a.score || new Date(b.date) - new Date(a.date));
+      leaderboard = leaderboard.slice(0, LEADERBOARD_LIMIT);
+      saveLeaderboard();
+      renderLeaderboard();
+      const currentName = playerName || "Invite";
+      lastRank = leaderboard.findIndex((entry) => entry.name === currentName && entry.score === finalScore && entry.mode === mode) + 1 || null;
+    }
+
+    function clearLeaderboard() {
+      leaderboard = [];
+      saveLeaderboard();
+      renderLeaderboard();
+      feedbackEl.textContent = "Classement vide.";
+    }
+
+    function updateSoundButton() {
+      soundToggleBtn.textContent = soundEnabled ? "Son active" : "Son coupe";
+      musicToggleBtn.textContent = musicEnabled ? "Musique active" : "Musique coupee";
+    }
+
+    function updateProgress() {
+      if (MODES[mode].infinite) {
+        progressLabelEl.textContent = "Progression libre";
+        progressValueEl.textContent = score + " pts";
+        progressFillEl.style.width = Math.min(100, 20 + streak * 6) + "%";
+        return;
+      }
+
+      const duration = MODES[mode].duration;
+      const percent = duration ? Math.max(0, Math.min(100, (Number(timeLeft) / duration) * 100)) : 100;
+      progressLabelEl.textContent = "Progression de la partie";
+      progressValueEl.textContent = Math.round(percent) + "%";
+      progressFillEl.style.width = percent + "%";
+    }
+
+    async function shareScore() {
+      const text = `${playerName || "Invite"} a fait ${score} points sur WASD Rush en mode ${MODES[mode].label}.`;
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: "WASD Rush", text });
+        } else if (navigator.clipboard) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          throw new Error("share-unavailable");
+        }
+        feedbackEl.textContent = "Score copie ou partage.";
+      } catch {
+        feedbackEl.textContent = "Partage annule ou non disponible.";
+      }
+    }
+
+    function ensureAudioContext() {
+      if (!audioContext) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) {
+          return null;
+        }
+        audioContext = new AudioCtx();
+      }
+
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+
+      return audioContext;
+    }
+
+    function stopMusicLoop() {
+      musicNodes.forEach(({ oscillator, gain }) => {
+        try {
+          gain.gain.cancelScheduledValues(audioContext.currentTime);
+          gain.gain.setTargetAtTime(0.0001, audioContext.currentTime, 0.04);
+          oscillator.stop(audioContext.currentTime + 0.12);
+        } catch {}
+      });
+      musicNodes = [];
+    }
+
+    function startMusicLoop() {
+      if (!musicEnabled || !isRunning) {
+        return;
+      }
+
+      const ctx = ensureAudioContext();
+      if (!ctx) {
+        return;
+      }
+
+      stopMusicLoop();
+      [220, 277, 330].forEach((frequency, index) => {
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        oscillator.type = index === 0 ? "sine" : "triangle";
+        oscillator.frequency.value = frequency;
+        gain.gain.value = 0.0001;
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start();
+        gain.gain.setTargetAtTime(0.012 + index * 0.003, ctx.currentTime + index * 0.12, 0.18);
+        musicNodes.push({ oscillator, gain });
+      });
+    }
+
+    function syncMusicState() {
+      if (!isRunning || !musicEnabled) {
+        stopMusicLoop();
+      } else if (!musicNodes.length) {
+        startMusicLoop();
+      }
+    }
+
+    function playTone(frequency, duration, type, volume, delay = 0) {
+      if (!soundEnabled) {
+        return;
+      }
+
+      const ctx = ensureAudioContext();
+      if (!ctx) {
+        return;
+      }
+
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime + delay;
+
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start(now);
+      oscillator.stop(now + duration + 0.03);
+    }
+
+    function playSuccessStep() {
+      playTone(520, 0.08, "triangle", 0.04);
+    }
+
+    function playSequenceComplete() {
+      playTone(620, 0.09, "triangle", 0.05);
+      playTone(780, 0.12, "triangle", 0.05, 0.08);
+    }
+
+    function playWrongSound() {
+      playTone(220, 0.14, "sawtooth", 0.035);
+    }
+
+    function playFinishSound() {
+      playTone(660, 0.12, "sine", 0.045);
+      playTone(520, 0.14, "sine", 0.045, 0.12);
+      playTone(780, 0.2, "triangle", 0.05, 0.24);
+    }
+
+    function applyTheme(nextTheme) {
+      const selected = THEMES[nextTheme] || THEMES.neon;
+      theme = nextTheme;
+      localStorage.setItem(THEME_KEY, theme);
+      themeSelectEl.value = theme;
+      document.documentElement.style.setProperty("--bg-1", selected.bg1);
+      document.documentElement.style.setProperty("--bg-2", selected.bg2);
+      document.documentElement.style.setProperty("--bg-3", selected.bg3);
+      document.documentElement.style.setProperty("--panel", selected.panel);
+      document.documentElement.style.setProperty("--text", selected.text);
+      document.documentElement.style.setProperty("--muted", selected.muted);
+      document.documentElement.style.setProperty("--accent", selected.accent);
+      document.documentElement.style.setProperty("--accent-2", selected.accent2);
+      document.documentElement.style.setProperty("--danger", selected.danger);
+      document.documentElement.style.setProperty("--glow", selected.glow);
+    }
+
+    function applyMode(nextMode) {
+      mode = MODES[nextMode] ? nextMode : "classic";
+      localStorage.setItem(MODE_KEY, mode);
+      modeSelectEl.value = mode;
+      modeChipEl.textContent = MODES[mode].label;
+      subtitleEl.textContent = MODES[mode].subtitle;
+      promptEl.textContent = MODES[mode].infinite
+        ? "Mode infini: tiens le plus longtemps possible."
+        : "Tape la sequence dans le bon ordre pour marquer des points.";
+      if (mode === "training") {
+        promptEl.textContent = "Mode entrainement: apprends le rythme, les erreurs cassent moins ta progression.";
+      }
+      resetGame();
+    }
+
+    function updateKeys(wrongKey = null) {
+      keyEls.forEach((keyEl, index) => {
+        const expected = ORDER[index];
+        keyEl.classList.remove("active", "done", "wrong");
+
+        if (wrongKey && wrongKey === expected) {
+          keyEl.classList.add("wrong");
+          return;
+        }
+
+        if (index < currentIndex) {
+          keyEl.classList.add("done");
+        } else if (index === currentIndex) {
+          keyEl.classList.add("active");
+        }
+      });
+    }
+
+    function createBurst() {
+      for (let i = 0; i < 12; i += 1) {
+        const particle = document.createElement("span");
+        particle.className = "particle";
+        particle.style.left = "50%";
+        particle.style.top = "44%";
+        particle.style.setProperty("--x", (Math.random() * 220 - 110) + "px");
+        particle.style.setProperty("--y", (Math.random() * 120 - 60) + "px");
+        particlesEl.appendChild(particle);
+        setTimeout(() => particle.remove(), 720);
+      }
+    }
+
+    function syncHud() {
+      scoreEl.textContent = score;
+      timerEl.textContent = MODES[mode].infinite ? "Infini" : timeLeft;
+      bestEl.textContent = bestScore;
+      comboEl.textContent = "x" + combo;
+      streakEl.textContent = streak;
+      statusEl.textContent = isRunning ? "En cours" : MODES[mode].infinite ? "Libre" : timeLeft === 0 ? "Termine" : "Pret";
+      streakLineEl.textContent = streak > 0 ? "Serie actuelle: " + streak + " | Meilleure serie: " + bestStreak : "Fais plusieurs sequences sans erreur pour monter ton combo.";
+      updateProgress();
+    }
+
+    function clearWrongFlash() {
+      if (wrongFlashTimeout) {
+        clearTimeout(wrongFlashTimeout);
+        wrongFlashTimeout = null;
+      }
+    }
+
+    function resetSequence(message = "Sequence reinitialisee.") {
+      currentIndex = 0;
+      feedbackEl.textContent = message;
+      updateKeys();
+    }
+
+    function getSequencePoints() {
+      return combo;
+    }
+
+    function showResults() {
+      resultScoreEl.textContent = score;
+      resultRankEl.textContent = lastRank ? "#" + lastRank : "-";
+      resultStreakEl.textContent = bestStreak;
+      resultsTextEl.textContent = playerName + ", ta partie est terminee.";
+      resultsMetaEl.textContent = "Mode " + MODES[mode].label + " | Meilleur score " + bestScore;
+      resultsOverlayEl.classList.remove("hidden");
+    }
+
+    function hideResults() {
+      resultsOverlayEl.classList.add("hidden");
+    }
+
+    function finishGame() {
+      isRunning = false;
+      clearInterval(timerId);
+      timerId = null;
+      clearWrongFlash();
+      stopMusicLoop();
+      currentIndex = 0;
+      updateKeys();
+      syncHud();
+      feedbackEl.textContent = "Temps ecoule. Score final: " + score + ".";
+      startBtn.textContent = MODES[mode].infinite ? "Relancer" : "Rejouer";
+      pushLeaderboardEntry(score);
+      playFinishSound();
+      showResults();
+    }
+
+    function tick() {
+      if (MODES[mode].infinite) {
+        return;
+      }
+
+      const remainingMs = Math.max(0, endTime - Date.now());
+      timeLeft = Math.ceil(remainingMs / 1000);
+      syncHud();
+
+      if (remainingMs <= 0) {
+        timeLeft = 0;
+        finishGame();
+      }
+    }
+
+    function startGame() {
+      if (!playerName) {
+        showNameOverlay();
+        feedbackEl.textContent = "Choisis d'abord un nom pour commencer.";
+        return;
+      }
+
+      hideResults();
+      ensureAudioContext();
+      score = 0;
+      combo = 1;
+      streak = 0;
+      bestStreak = 0;
+      currentIndex = 0;
+      timeLeft = MODES[mode].infinite ? "Infini" : MODES[mode].duration;
+      if (MODES[mode].infinite) {
+        timeLeft = "Infini";
+      }
+      lastRank = null;
+      isRunning = true;
+      if (!MODES[mode].infinite) {
+        endTime = Date.now() + MODES[mode].duration * 1000;
+        clearInterval(timerId);
+        timerId = setInterval(tick, 100);
+      }
+      startBtn.textContent = "Partie en cours";
+      feedbackEl.textContent = "C'est parti. Commence par W.";
+      updateKeys();
+      syncHud();
+      syncMusicState();
+    }
+
+    function resetGame() {
+      isRunning = false;
+      score = 0;
+      combo = 1;
+      streak = 0;
+      bestStreak = 0;
+      timeLeft = MODES[mode].infinite ? "Infini" : MODES[mode].duration;
+      if (MODES[mode].infinite) {
+        timeLeft = "Infini";
+      }
+      currentIndex = 0;
+      clearInterval(timerId);
+      timerId = null;
+      clearWrongFlash();
+      stopMusicLoop();
+      startBtn.textContent = "Commencer";
+      feedbackEl.textContent = "Appuie sur Commencer puis enchaine.";
+      updateKeys();
+      syncHud();
+    }
+
+    function resetBestScore() {
+      bestScore = 0;
+      localStorage.setItem(BEST_KEY, "0");
+      syncHud();
+      feedbackEl.textContent = "Meilleur score reinitialise.";
+    }
+
+    function handleCorrectKey() {
+      currentIndex += 1;
+
+      if (currentIndex === ORDER.length) {
+        score += getSequencePoints();
+        streak += 1;
+        combo = mode === "training" ? Math.min(4, 1 + Math.floor(streak / 4)) : Math.min(9, 1 + Math.floor(streak / 3));
+        bestStreak = Math.max(bestStreak, streak);
+        if (score > bestScore) {
+          bestScore = score;
+          localStorage.setItem(BEST_KEY, String(bestScore));
+        }
+        currentIndex = 0;
+        feedbackEl.textContent = "Bien joue. +" + getSequencePoints() + " points.";
+        createBurst();
+        playSequenceComplete();
+      } else {
+        feedbackEl.textContent = "Parfait. Prochaine touche: " + ORDER[currentIndex].toUpperCase();
+        playSuccessStep();
+      }
+
+      updateKeys();
+      syncHud();
+    }
+
+    function handleWrongKey(key) {
+      clearWrongFlash();
+      currentIndex = 0;
+      streak = mode === "training" ? Math.max(0, streak - 1) : 0;
+      combo = mode === "training" ? Math.max(1, combo - 1) : 1;
+      feedbackEl.textContent = "Mauvais ordre. Reprends a W.";
+      updateKeys(key);
+      playWrongSound();
+      syncHud();
+      wrongFlashTimeout = setTimeout(() => {
+        updateKeys();
+      }, 180);
+    }
+
+    function processInput(key) {
+      if (!isRunning) {
+        return;
+      }
+
+      if (key === ORDER[currentIndex]) {
+        handleCorrectKey();
+      } else {
+        handleWrongKey(key);
+      }
+    }
+
+    window.addEventListener("keydown", (event) => {
+      const key = event.key.toLowerCase();
+
+      if (key === "r") {
+        event.preventDefault();
+        resetBestScore();
+        return;
+      }
+
+      if (!ORDER.includes(key)) {
+        return;
+      }
+
+      event.preventDefault();
+
+      processInput(key);
+    });
+
+    startBtn.addEventListener("click", () => {
+      if (!isRunning) {
+        startGame();
+      }
+    });
+
+    restartBtn.addEventListener("click", resetGame);
+    soundToggleBtn.addEventListener("click", () => {
+      soundEnabled = !soundEnabled;
+      localStorage.setItem(SOUND_KEY, soundEnabled ? "on" : "off");
+      updateSoundButton();
+      if (soundEnabled) {
+        playTone(560, 0.08, "triangle", 0.04);
+      }
+    });
+    musicToggleBtn.addEventListener("click", () => {
+      musicEnabled = !musicEnabled;
+      localStorage.setItem(MUSIC_KEY, musicEnabled ? "on" : "off");
+      updateSoundButton();
+      syncMusicState();
+    });
+    clearBoardBtn.addEventListener("click", clearLeaderboard);
+    changeNameBtn.addEventListener("click", showNameOverlay);
+    resetBestBtn.addEventListener("click", resetBestScore);
+    shareScoreBtn.addEventListener("click", shareScore);
+    modeSelectEl.addEventListener("change", (event) => applyMode(event.target.value));
+    themeSelectEl.addEventListener("change", (event) => applyTheme(event.target.value));
+    closeResultsBtn.addEventListener("click", hideResults);
+    replayResultsBtn.addEventListener("click", () => {
+      hideResults();
+      startGame();
+    });
+    nameFormEl.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const nextName = sanitizeName(nameInputEl.value);
+
+      if (!nextName) {
+        nameErrorEl.textContent = "Entre un nom entre 1 et 16 caracteres.";
+        return;
+      }
+
+      savePlayerName(nextName);
+      feedbackEl.textContent = "Nom enregistre. Tu peux jouer.";
+    });
+
+    mobileKeyEls.forEach((button) => {
+      button.addEventListener("click", () => processInput(button.dataset.mobileKey));
+    });
+
+    renderLeaderboard();
+    renderColorPicker();
+    updatePlayerName();
+    updateSoundButton();
+    applyTheme(theme);
+    applyMode(mode);
+
+    if (!playerName) {
+      showNameOverlay();
+    }
+  </script>
+</body>
+</html>
